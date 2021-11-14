@@ -7,8 +7,6 @@
 
 namespace Tina4;
 
-use Exception;
-
 /**
  * DataFirebird
  * The implementation for the firebird database engine
@@ -21,7 +19,7 @@ class DataFirebird implements DataBase
     /**
      * @var null database metadata
      */
-    private $databaseMetaData = null;
+    private $databaseMetaData;
 
     /**
      * Open a Firebird database connection
@@ -34,25 +32,16 @@ class DataFirebird implements DataBase
             throw new \Exception("Firebird extension for PHP needs to be installed");
         }
 
-        $dateFormat = str_replace(array("Y", "d", "m"), array("%Y", "%d", "%m"), $this->getDefaultDatabaseDateFormat());
-
-        //Set the returning format to something we can expect to transform
-        ini_set(
-            "ibase.dateformat",
-            $dateFormat
-        );
-        ini_set(
-            "ibase.timestampformat",
-            $dateFormat. " %H:%M:%S"
-        );
+        (new FirebirdDateFormat($this->getDefaultDatabaseDateFormat()));
 
         $databasePath = $this->hostName . "/" . $this->port . ":" . $this->databaseName;
 
-        if ($persistent) {
-            $this->dbh = ibase_pconnect($databasePath, $this->username, $this->password);
-        } else {
-            $this->dbh = ibase_connect($databasePath, $this->username, $this->password);
-        }
+        $this->dbh = (new FirebirdConnection(
+            $databasePath,
+            $this->username,
+            $this->password,
+            $persistent
+        ))->getConnection();
     }
 
     /**
@@ -79,25 +68,15 @@ class DataFirebird implements DataBase
     final public function exec()
     {
         $params = $this->parseParams(func_get_args());
-        $tranId = $params["tranId"];
-        $params = $params["params"];
 
-        if (stripos($params[0], "returning") !== false) {
-
+        if (isset($params[0]) && stripos($params[0], "returning") !== false) {
             return $this->fetch($params);
         }
 
-        if (!empty($tranId)) {
-            $preparedQuery = ibase_prepare($this->dbh, $tranId, $params[0]);
-        } else {
-            $preparedQuery = ibase_prepare($this->dbh, $params[0]);
-        }
+        $tranId = $params["tranId"];
+        $params = $params["params"];
 
-        if (!empty($preparedQuery)) {
-            $params[0] = $preparedQuery;
-
-            ibase_execute(...$params);
-        }
+        (new FirebirdExec($this))->exec($params, $tranId);
 
         return $this->error();
     }
@@ -112,97 +91,14 @@ class DataFirebird implements DataBase
      */
     final public function fetch($sql, int $noOfRecords = 10, int $offSet = 0, array $fieldMapping = []): ?DataResult
     {
-        $params = [];
-        if (is_array($sql)) {
-            $initialSQL = $sql[0];
-            $params = array_merge([$this->dbh], $sql);
-        } else {
-            $initialSQL = $sql;
-        }
-
-        if (stripos($initialSQL, "returning") === false) {
-            //inject in the limits for the select - in Firebird select first x skip y
-            $limit = " first {$noOfRecords} skip {$offSet} ";
-
-            $posSelect = stripos($initialSQL, "select") + strlen("select");
-
-            $sql = substr($initialSQL, 0, $posSelect) . $limit . substr($initialSQL, $posSelect);
-            //select first 10 skip 10 from table
-        }
-
-        if (is_array($sql)) {
-            $recordCursor = ibase_query(...$params);
-        } else {
-            $recordCursor = ibase_query($this->dbh, $sql);
-        }
-
-        $records = null;
-        $record = null;
-
-        while ($record = ibase_fetch_assoc($recordCursor)) {
-            foreach ($record as $key => $value) {
-                if (strpos($value, "0x") === 0) {
-                    //Get the blob information
-                    $blobData = ibase_blob_info($this->dbh, $value);
-                    //Get a handle to the blob
-                    $blobHandle = ibase_blob_open($this->dbh, $value);
-                    //Get the blob contents
-                    $content = ibase_blob_get($blobHandle, $blobData[0]);
-                    ibase_blob_close($blobHandle);
-                    $record[$key] = $content;
-                }
-            }
-
-            $records[] = (new DataRecord(
-                $record,
-                $fieldMapping,
-                $this->getDefaultDatabaseDateFormat(),
-                $this->dateFormat
-            ));
-        }
-
-        if (is_array($records) && count($records) > 0) {
-            if (stripos($initialSQL, "returning") === false) {
-                $sqlCount = "select count(*) as COUNT_RECORDS from ($initialSQL)";
-                $recordCount = ibase_query($this->dbh, $sqlCount);
-                $resultCount = ibase_fetch_assoc($recordCount);
-            } else {
-                $resultCount["COUNT_RECORDS"] = count($records); //used for insert into or update
-            }
-        } else {
-            $resultCount["COUNT_RECORDS"] = 0;
-        }
-
-        //populate the fields
-        $fid = 0;
-        $fields = [];
-        if (!empty($records)) {
-            $record = $records[0];
-            foreach ($record as $field => $value) {
-                $fieldInfo = ibase_field_info($recordCursor, $fid);
-
-                $fields[] = (new DataField(
-                    $fid,
-                    $fieldInfo["name"],
-                    $fieldInfo["alias"],
-                    $fieldInfo["type"],
-                    $fieldInfo["length"]
-                ));
-
-                $fid++;
-            }
-        }
-
-        $error = $this->error();
-
-        return (new DataResult($records, $fields, $resultCount["COUNT_RECORDS"], $offSet, $error));
+        return (new FirebirdQuery($this))->query($sql, $noOfRecords, $offSet, $fieldMapping);
     }
 
     /**
      * Returns an error
      * @return DataError
      */
-    final public function error()
+    final public function error(): DataError
     {
         $errorCode = ibase_errcode();
         $errorMessage = ibase_errmsg();
@@ -296,110 +192,9 @@ class DataFirebird implements DataBase
             return $this->databaseMetaData;
         }
 
-        $sqlTables = 'select distinct rdb$relation_name as table_name
-                      from rdb$relation_fields
-                     where rdb$system_flag=0
-                       and rdb$view_context is null';
+        $this->databaseMetaData = (new FirebirdMetaData($this))->getDatabaseMetaData();
 
-        $tables = $this->fetch($sqlTables, 1000, 0)->AsObject();
-        $database = [];
-        foreach ($tables as $record) {
-            $sqlInfo = 'SELECT r.RDB$FIELD_NAME AS field_name,
-                           r.RDB$DESCRIPTION AS field_description,
-                           r.RDB$DEFAULT_VALUE AS field_default_value,
-                           r.RDB$NULL_FLAG AS field_not_null_constraint,
-                           f.RDB$FIELD_LENGTH AS field_length,
-                           f.RDB$FIELD_PRECISION AS field_precision,
-                           f.RDB$FIELD_SCALE AS field_scale,
-                           CASE f.RDB$FIELD_TYPE
-                              WHEN 261 THEN \'BLOB\'
-                              WHEN 14 THEN \'CHAR\'
-                              WHEN 40 THEN \'CSTRING\'
-                              WHEN 11 THEN \'D_FLOAT\'
-                              WHEN 27 THEN \'DOUBLE\'
-                              WHEN 10 THEN \'FLOAT\'
-                              WHEN 16 THEN \'INT64\'
-                              WHEN 8 THEN \'INTEGER\'
-                              WHEN 9 THEN \'QUAD\'
-                              WHEN 7 THEN \'SMALLINT\'
-                              WHEN 
-                                  12 THEN \'DATE\'
-                              WHEN 13 THEN \'TIME\'
-                              WHEN 35 THEN \'TIMESTAMP\'
-                              WHEN 37 THEN \'VARCHAR\'
-                              ELSE \'UNKNOWN\'
-                            END AS field_type,
-                            f.RDB$FIELD_SUB_TYPE AS field_subtype,
-                            coll.RDB$COLLATION_NAME AS field_collation,
-                            cset.RDB$CHARACTER_SET_NAME AS field_charset
-                       FROM RDB$RELATION_FIELDS r
-                       LEFT JOIN RDB$FIELDS f ON r.RDB$FIELD_SOURCE = f.RDB$FIELD_NAME
-                       LEFT JOIN RDB$COLLATIONS coll ON r.RDB$COLLATION_ID = coll.RDB$COLLATION_ID
-                        AND f.RDB$CHARACTER_SET_ID = coll.RDB$CHARACTER_SET_ID
-                       LEFT JOIN RDB$CHARACTER_SETS cset ON f.RDB$CHARACTER_SET_ID = cset.RDB$CHARACTER_SET_ID
-                      WHERE r.RDB$RELATION_NAME = \'' . $record->tableName . '\'
-                    ORDER BY r.RDB$FIELD_POSITION';
-            $tableInfo = $this->fetch($sqlInfo, 1000, 0)->AsObject();
-
-
-            $primaryKeys = $this->fetch(
-                'SELECT rc.RDB$CONSTRAINT_NAME,
-                          s.RDB$FIELD_NAME AS field_name,
-                          rc.RDB$CONSTRAINT_TYPE AS constraint_type,
-                          i.RDB$DESCRIPTION AS description,
-                          rc.RDB$DEFERRABLE AS is_deferrable,
-                          rc.RDB$INITIALLY_DEFERRED AS is_deferred,
-                          refc.RDB$UPDATE_RULE AS on_update,
-                          refc.RDB$DELETE_RULE AS on_delete,
-                          refc.RDB$MATCH_OPTION AS match_type,
-                          i2.RDB$RELATION_NAME AS references_table,
-                          s2.RDB$FIELD_NAME AS references_field,
-                          (s.RDB$FIELD_POSITION + 1) AS field_position
-                     FROM RDB$INDEX_SEGMENTS s
-                LEFT JOIN RDB$INDICES i ON i.RDB$INDEX_NAME = s.RDB$INDEX_NAME
-                LEFT JOIN RDB$RELATION_CONSTRAINTS rc ON rc.RDB$INDEX_NAME = s.RDB$INDEX_NAME
-                LEFT JOIN RDB$REF_CONSTRAINTS refc ON rc.RDB$CONSTRAINT_NAME = refc.RDB$CONSTRAINT_NAME
-                LEFT JOIN RDB$RELATION_CONSTRAINTS rc2 ON rc2.RDB$CONSTRAINT_NAME = refc.RDB$CONST_NAME_UQ
-                LEFT JOIN RDB$INDICES i2 ON i2.RDB$INDEX_NAME = rc2.RDB$INDEX_NAME
-                LEFT JOIN RDB$INDEX_SEGMENTS s2 ON i2.RDB$INDEX_NAME = s2.RDB$INDEX_NAME
-                    WHERE i.RDB$RELATION_NAME=\'' . $record->tableName . '\'
-                      AND rc.RDB$CONSTRAINT_TYPE IS NOT NULL
-                 ORDER BY s.RDB$FIELD_POSITION'
-            )->AsObject();
-
-
-            $PK = [];
-            foreach ($primaryKeys as $pkid => $primaryKey) {
-                $PK[$primaryKey->fieldName]["IS_PRIMARY_KEY"] = ($primaryKey->constraintType === "PRIMARY KEY");
-                $PK[$primaryKey->fieldName]["IS_FOREIGN_KEY"] = ($primaryKey->constraintType === "FOREIGN KEY");
-                $PK[$primaryKey->fieldName]["CONSTRAINT_TYPE"] = $primaryKey->constraintType;
-            }
-
-
-            //Go through the tables and extract their column information
-            $tableName = strtolower(trim($record->tableName));
-            foreach ($tableInfo as $tid => $tRecord) {
-                $database[$tableName][$tid]["column"] = $tid;
-                $database[$tableName][$tid]["field"] = trim($tRecord->fieldName);
-                $database[$tableName][$tid]["description"] = trim($tRecord->fieldDescription);
-                $database[$tableName][$tid]["type"] = trim($tRecord->fieldType);
-                $database[$tableName][$tid]["length"] = trim($tRecord->fieldLength);
-                $database[$tableName][$tid]["precision"] = trim($tRecord->fieldPrecision);
-                $database[$tableName][$tid]["default"] = trim($tRecord->fieldDefaultValue);
-                if (!empty($tRecord->fieldNotNullContraint)) {
-                    $database[$tableName][$tid]["notnull"] = trim($tRecord->fieldNotNullContraint);
-                }
-                if (!empty($PK[$tRecord->fieldName])) {
-                    $database[$tableName][$tid]["pk"] = trim($PK[$tRecord->fieldName]["CONSTRAINT_TYPE"]);
-                } else {
-                    $database[$tableName][$tid]["pk"] = "";
-                }
-            }
-        }
-
-        $this->databaseMetaData = $database;
-
-        return $database;
+        return $this->databaseMetaData;
     }
 
     /**
