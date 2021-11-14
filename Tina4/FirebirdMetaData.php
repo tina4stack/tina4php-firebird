@@ -10,22 +10,8 @@ namespace Tina4;
 /**
  * FirebirdMetaData retrieves the Firebird metadata from the database
  */
-class FirebirdMetaData implements DataBaseMetaData
+class FirebirdMetaData extends DataConnection implements DataBaseMetaData
 {
-    /**
-     * @var Database Database connection
-     */
-    private $connection;
-
-    /**
-     * Constructor for the MetaData class
-     * @param Database $connection
-     */
-    public function __construct(Database $connection)
-    {
-        $this->connection = $connection;
-    }
-
     /**
      * Get all the tables for the database
      * @return array
@@ -37,7 +23,7 @@ class FirebirdMetaData implements DataBaseMetaData
                        WHERE rdb$system_flag=0
                          AND rdb$view_context is null';
 
-        $tables = $this->connection->fetch($sqlTables, 1000, 0);
+        $tables = $this->getConnection()->fetch($sqlTables, 1000, 0);
 
         if (!empty($tables)) {
             return $tables->asObject();
@@ -90,7 +76,7 @@ class FirebirdMetaData implements DataBaseMetaData
                      WHERE r.RDB$RELATION_NAME = \'' . $tableName . '\'
                   ORDER BY r.RDB$FIELD_POSITION';
 
-        $columns = $this->connection->fetch($sqlInfo, 1000, 0)->AsObject();
+        $columns = $this->getConnection()->fetch($sqlInfo, 1000, 0)->AsObject();
 
         $primaryKeys = $this->getPrimaryKeys($tableName);
         $primaryKeyLookup = [];
@@ -163,7 +149,7 @@ class FirebirdMetaData implements DataBaseMetaData
      */
     final public function getPrimaryKeys(string $tableName): array
     {
-        return $this->connection->fetch(
+        return $this->getConnection()->fetch(
             'SELECT rc.RDB$CONSTRAINT_NAME,
                           trim(s.RDB$FIELD_NAME) AS field_name,
                           rc.RDB$CONSTRAINT_TYPE AS constraint_type
@@ -187,7 +173,7 @@ class FirebirdMetaData implements DataBaseMetaData
      */
     final public function getForeignKeys(string $tableName): array
     {
-        return $this->connection->fetch(
+        return $this->getConnection()->fetch(
             'SELECT rc.RDB$CONSTRAINT_NAME,
                           trim(s.RDB$FIELD_NAME) AS field_name,
                           rc.RDB$CONSTRAINT_TYPE AS constraint_type

@@ -7,17 +7,13 @@
 
 namespace Tina4;
 
-class FirebirdExec
+/**
+ * Executes queries on a Firebird database
+ */
+class FirebirdExec extends DataConnection implements DataBaseExec
 {
-    private $connection;
-
-    public function __construct(Database $connection)
-    {
-        $this->connection = $connection;
-    }
-
     /**
-     * Execute a Firebird Query
+     * Execute a Firebird Query Statement which ordinarily does not retrieve results
      * @param $params
      * @param $tranId
      * @return DataResult|void|null
@@ -25,9 +21,9 @@ class FirebirdExec
     final public function exec($params, $tranId): void
     {
         if (!empty($tranId)) {
-            $preparedQuery = ibase_prepare($this->connection->dbh, $tranId, $params[0]);
+            $preparedQuery = ibase_prepare($this->getDbh(), $tranId, $params[0]);
         } else {
-            $preparedQuery = ibase_prepare($this->connection->dbh, $params[0]);
+            $preparedQuery = ibase_prepare($this->getDbh(), $params[0]);
         }
 
         if (!empty($preparedQuery)) {

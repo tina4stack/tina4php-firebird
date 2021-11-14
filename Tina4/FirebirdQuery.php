@@ -7,23 +7,13 @@
 
 namespace Tina4;
 
-class FirebirdQuery
+/**
+ * Queries the Firebird database and returns back results
+ */
+class FirebirdQuery extends DataConnection implements DataBaseQuery
 {
     /**
-     * @var Database connection to Firebird database
-     */
-    private $connection;
-
-    /**
-     * Constructor for Firebird Query
-     * @param Database $connection
-     */
-    public function __construct(Database $connection)
-    {
-        $this->connection = $connection;
-    }
-
-    /**
+     * Runs a query against the database and returns a DataResult
      * @param $sql
      * @param int $noOfRecords
      * @param int $offSet
@@ -35,7 +25,7 @@ class FirebirdQuery
         $params = [];
         if (is_array($sql)) {
             $initialSQL = $sql[0];
-            $params = array_merge([$this->connection->dbh], $sql);
+            $params = array_merge([$this->getDbh()], $sql);
         } else {
             $initialSQL = $sql;
         }
@@ -51,18 +41,18 @@ class FirebirdQuery
         if (is_array($sql)) {
             $recordCursor = ibase_query(...$params);
         } else {
-            $recordCursor = ibase_query($this->connection->dbh, $sql);
+            $recordCursor = ibase_query($this->getDbh(), $sql);
         }
 
         $records = null;
         while ($record = ibase_fetch_assoc($recordCursor)) {
-            $record = (new FirebirdBlobHandler($this->connection))->decodeBlobs($record);
+            $record = (new FirebirdBlobHandler($this->getConnection()))->decodeBlobs($record);
 
             $records[] = (new DataRecord(
                 $record,
                 $fieldMapping,
-                $this->connection->getDefaultDatabaseDateFormat(),
-                $this->connection->dateFormat
+                $this->getConnection()->getDefaultDatabaseDateFormat(),
+                $this->getConnection()->dateFormat
             ));
         }
 
@@ -89,7 +79,7 @@ class FirebirdQuery
                 }
 
                 $sqlCount = "select count(*) as COUNT_RECORDS from ($initialSQL)";
-                $recordCount = ibase_query($this->connection->dbh, $sqlCount);
+                $recordCount = ibase_query($this->getDbh(), $sqlCount);
                 $resultCount = ibase_fetch_assoc($recordCount);
             } else {
                 $resultCount["COUNT_RECORDS"] = count($records); //used for insert into or update
@@ -98,9 +88,7 @@ class FirebirdQuery
             $resultCount["COUNT_RECORDS"] = 0;
         }
 
-
-
-        $error = $this->connection->error();
+        $error = $this->getConnection()->error();
 
         return (new DataResult($records, $fields, $resultCount["COUNT_RECORDS"], $offSet, $error));
     }

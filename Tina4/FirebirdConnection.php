@@ -13,6 +13,10 @@ namespace Tina4;
  */
 class FirebirdConnection
 {
+    /**
+     * Database connection
+     * @var false|resource
+     */
     private $connection;
     /**
      * Creates a Firebird Database Connection

@@ -14,9 +14,9 @@ class FirebirdDateFormat
 {
     /**
      * Sets up the constants for the database format
-     * @param $databaseDateFormat
+     * @param string $databaseDateFormat
      */
-    public function __construct($databaseDateFormat)
+    public function __construct(string $databaseDateFormat)
     {
         $dateFormat = str_replace(array("Y", "d", "m"), array("%Y", "%d", "%m"), $databaseDateFormat);
 

@@ -10,34 +10,21 @@ namespace Tina4;
 /**
  * Fetches blob data from the database
  */
-class FirebirdBlobHandler
+class FirebirdBlobHandler extends DataConnection
 {
-    /**
-     * @var Database connection to Firebird database
-     */
-    private $connection;
-
-    /**
-     * Constructor for Firebird Blob Handler
-     * @param Database $connection
-     */
-    public function __construct(Database $connection)
-    {
-        $this->connection = $connection;
-    }
-
     /**
      * Decodes the blobs for a returned record
      * @param $record
+     * @return mixed
      */
     final public function decodeBlobs($record)
     {
         foreach ($record as $key => $value) {
             if (strpos($value, "0x") === 0) {
                 //Get the blob information
-                $blobData = ibase_blob_info($this->connection->dbh, $value);
+                $blobData = ibase_blob_info($this->getDbh(), $value);
                 //Get a handle to the blob
-                $blobHandle = ibase_blob_open($this->connection->dbh, $value);
+                $blobHandle = ibase_blob_open($this->getDbh(), $value);
                 //Get the blob contents
                 $content = ibase_blob_get($blobHandle, $blobData[0]);
                 ibase_blob_close($blobHandle);
