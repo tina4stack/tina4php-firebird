@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0822ba81a895772ae666616230924d01",
+    "content-hash": "c3fc07d0621ba41dccb031087de75e05",
     "packages": [
         {
             "name": "psr/log",
@@ -217,7 +217,7 @@
         },
         {
             "name": "tina4stack/tina4php-database",
-            "version": "dev-main",
+            "version": "v1.0.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/tina4stack/tina4php-database.git",
@@ -238,7 +238,6 @@
                 "phpunit/phpunit": "^9",
                 "roave/security-advisories": "dev-latest"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "files": [
@@ -268,7 +267,7 @@
             "description": "Tina4 PHP Database Module",
             "support": {
                 "issues": "https://github.com/tina4stack/tina4php-database/issues",
-                "source": "https://github.com/tina4stack/tina4php-database/tree/main"
+                "source": "https://github.com/tina4stack/tina4php-database/tree/v1.0.6"
             },
             "time": "2021-11-14T15:04:08+00:00"
         },
@@ -4899,7 +4898,6 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "tina4stack/tina4php-database": 20,
         "roave/security-advisories": 20
     },
     "prefer-stable": false,
