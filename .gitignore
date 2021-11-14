@@ -4,3 +4,4 @@
 /phpmetrics/
 /tests/junit.xml
 /php-firebird/
+/.php-cs-fixer.cache

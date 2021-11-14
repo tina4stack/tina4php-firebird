@@ -35,7 +35,7 @@ class FirebirdQuery
         $params = [];
         if (is_array($sql)) {
             $initialSQL = $sql[0];
-            $params = array_merge([$this->dbh], $sql);
+            $params = array_merge([$this->connection->dbh], $sql);
         } else {
             $initialSQL = $sql;
         }

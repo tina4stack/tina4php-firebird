@@ -63,7 +63,7 @@ class DataFirebird implements DataBase
 
     /**
      * Execute a firebird query, format is query followed by params or variables
-     * @return array|bool
+     * @return DataError|bool
      */
     final public function exec()
     {
@@ -165,7 +165,7 @@ class DataFirebird implements DataBase
             $tableName = strtoupper($tableName);
             $exists = $this->fetch("SELECT 1 AS CONSTANT 
                                           FROM RDB\$RELATIONS 
-                                         WHERE RDB\$RELATION_NAME = '{$tableName}'");
+                                         WHERE RDB\$RELATION_NAME = '$tableName'");
 
             return !empty($exists->records());
         }
