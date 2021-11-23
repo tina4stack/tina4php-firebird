@@ -69,12 +69,12 @@ class DataFirebird implements DataBase
     {
         $params = $this->parseParams(func_get_args());
 
+        $tranId = $params["tranId"];
+        $params = $params["params"];
+
         if (isset($params[0]) && stripos($params[0], "returning") !== false) {
             return $this->fetch($params);
         }
-
-        $tranId = $params["tranId"];
-        $params = $params["params"];
 
         (new FirebirdExec($this))->exec($params, $tranId);
 
