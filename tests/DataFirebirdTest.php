@@ -69,7 +69,9 @@ class DataFirebirdTest extends TestCase
 
         $this->assertCount(2, $records, "Records were not 2");
 
-        $result = $this->DBA->exec("insert into testing (id) values (3) returning id");
+        $result = $this->DBA->exec("insert into testing (id) values (3) returning id")->asArray();
+
+        $this->assertEquals(3, $result[0]["id"]);
     }
 
     final public function testGetDatabase(): void
