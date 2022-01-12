@@ -45,7 +45,7 @@ class FirebirdQuery extends DataConnection implements DataBaseQuery
             $recordCursor = ibase_query($this->getDbh(), $sql);
         }
 
-        $records = null;
+        $records = [];
         while ($record = ibase_fetch_assoc($recordCursor)) {
             $record = (new FirebirdBlobHandler($this->getConnection()))->decodeBlobs($record);
 
