@@ -39,6 +39,7 @@ class FirebirdQuery extends DataConnection implements DataBaseQuery
         }
 
         if (is_array($sql)) {
+            Debug::message(print_r ($params,1));
             $recordCursor = ibase_query(...$params);
         } else {
             $recordCursor = ibase_query($this->getDbh(), $sql);
@@ -58,7 +59,7 @@ class FirebirdQuery extends DataConnection implements DataBaseQuery
 
         //populate the fields
         $fields = [];
-        if (is_array($records) && count($records) > 0) {
+        if (is_array($records) && count($records) > 1) {
             if (stripos($initialSQL, "returning") === false) {
                 if (!empty($records)) {
                     $record = $records[0];
@@ -85,7 +86,7 @@ class FirebirdQuery extends DataConnection implements DataBaseQuery
                 $resultCount["COUNT_RECORDS"] = count($records); //used for insert into or update
             }
         } else {
-            $resultCount["COUNT_RECORDS"] = 0;
+            $resultCount["COUNT_RECORDS"] = count($records);
         }
 
         $error = $this->getConnection()->error();
