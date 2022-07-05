@@ -20,6 +20,7 @@ class FirebirdBlobHandler extends DataConnection
     final public function decodeBlobs($record)
     {
         foreach ($record as $key => $value) {
+            if (empty($value)) continue;
             if (strpos($value, "0x") === 0) {
                 //Get the blob information
                 $blobData = ibase_blob_info($this->getDbh(), $value);

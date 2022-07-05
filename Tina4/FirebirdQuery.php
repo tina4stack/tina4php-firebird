@@ -46,15 +46,17 @@ class FirebirdQuery extends DataConnection implements DataBaseQuery
         }
 
         $records = [];
-        while ($record = ibase_fetch_assoc($recordCursor)) {
-            $record = (new FirebirdBlobHandler($this->getConnection()))->decodeBlobs($record);
+        if (!empty($recordCursor)) {
+            while ($record = ibase_fetch_assoc($recordCursor)) {
+                $record = (new FirebirdBlobHandler($this->getConnection()))->decodeBlobs($record);
 
-            $records[] = (new DataRecord(
-                $record,
-                $fieldMapping,
-                $this->getConnection()->getDefaultDatabaseDateFormat(),
-                $this->getConnection()->dateFormat
-            ));
+                $records[] = (new DataRecord(
+                    $record,
+                    $fieldMapping,
+                    $this->getConnection()->getDefaultDatabaseDateFormat(),
+                    $this->getConnection()->dateFormat
+                ));
+            }
         }
 
         //populate the fields
