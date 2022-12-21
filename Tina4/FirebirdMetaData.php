@@ -91,6 +91,18 @@ class FirebirdMetaData extends DataConnection implements DataBaseMetaData
         }
 
         foreach ($columns as $columnIndex => $columnData) {
+            if ($columnData->fieldPrecision === null) {
+                $columnData->fieldPrecision = 0;
+            }
+
+            if ($columnData->defaultFieldValue === null) {
+                $columnData->defaultFieldValue = "";
+            }
+
+            if ($columnData->fieldDescription === null) {
+                $columnData->fieldDescription = "";
+            }
+
             $fieldData = new \Tina4\DataField(
                 $columnIndex,
                 trim($columnData->fieldName),
