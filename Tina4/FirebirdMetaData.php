@@ -95,8 +95,8 @@ class FirebirdMetaData extends DataConnection implements DataBaseMetaData
                 $columnData->fieldPrecision = 0;
             }
 
-            if ($columnData->defaultFieldValue === null) {
-                $columnData->defaultFieldValue = "";
+            if ($columnData->fieldDefaultValue === null) {
+                $columnData->fieldDefaultValue = "";
             }
 
             if ($columnData->fieldDescription === null) {
