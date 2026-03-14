@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  firebird:
+    image: jacobalberty/firebird:3.0
+    platform: linux/x86_64
+    ports:
+      - "33050:3050"
+    environment:
+      ISC_PASSWORD: pass1234
+      FIREBIRD_DATABASE: TINA4.FDB
+      FIREBIRD_USER: firebird

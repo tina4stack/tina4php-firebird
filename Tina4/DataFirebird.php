@@ -199,9 +199,9 @@ class DataFirebird implements DataBase
 
     /**
      * Gets the default database port
-     * @return int|mixed
+     * @return int|null
      */
-    final public function getDefaultDatabasePort(): int
+    final public function getDefaultDatabasePort(): ?int
     {
         return 3050;
     }

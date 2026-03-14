@@ -1,8 +1,18 @@
 # tina4php-firebird
 
+Tina4 Firebird database driver.
+
 ### Installation
+
 ```
 composer require tina4stack/tina4php-firebird
+```
+
+### Usage
+
+```php
+global $DBA;
+$DBA = new \Tina4\DataFirebird("localhost/3050:mydb.fdb", "sysdba", "password");
 ```
 
 ### Testing with Docker
@@ -36,3 +46,12 @@ phpize
 CFLAGS='-arch x86_64' CPPFLAGS=-I/Library/Frameworks/Firebird.framework/Headers LDFLAGS=-L/Library/Frameworks/Firebird.framework/Resources/lib ./configure
 make
 ```
+---
+
+## Our Sponsors
+
+**Sponsored with 🩵 by Code Infinity**
+
+[<img src="https://codeinfinity.co.za/wp-content/uploads/2025/09/c8e-logo-github.png" alt="Code Infinity" width="100">](https://codeinfinity.co.za/about-open-source-policy?utm_source=github&utm_medium=website&utm_campaign=opensource_campaign&utm_id=opensource)
+
+*Supporting open source communities <span style="color: #1DC7DE;">•</span> Innovate <span style="color: #1DC7DE;">•</span> Code <span style="color: #1DC7DE;">•</span> Empower*
